@@ -18,10 +18,7 @@ public class GetStarted {
             // 2. Нажимаем на кнопку Get Started (она находится по тексту или классу)
             page.getByText("Get Started").first().click();
 
-            // 3. Ждем секунду, чтобы увидеть результат (в реальных тестах так не делают, но нам для красоты надо)
-            page.waitForTimeout(2000);
-
-            // Проверяем, что заголовок совпадает с ожидаемым
+            // 3. Проверяем, что заголовок совпадает с ожидаемым
             assertEquals("Installation | Playwright", page.title());
 
             System.out.println ("Заголовок страницы: " + page.title());
