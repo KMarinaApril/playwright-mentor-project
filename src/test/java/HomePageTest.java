@@ -18,7 +18,7 @@ public class HomePageTest extends BaseTest {
         });
 
         Allure.step("Проверить, что заголовок содержит 'Playwright'", () -> {
-            assertTrue(page.title().contains("Playwright"));
+            assertTrue(page.title().contains("Playwright"), "Заголовок страницы не содержит ожидаемый текст!");
         });
     }
 }
