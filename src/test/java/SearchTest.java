@@ -1,5 +1,6 @@
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.AriaRole;
+import io.qameta.allure.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -8,45 +9,42 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class SearchTest {
-    @ParameterizedTest
-    @ValueSource(strings = {"Actions", "Locators", "Assertions", "Playwright"})
-        // Список слов для поиска
-    void searchParameterizedTest(String searchQuery) { // searchQuery — это переменная, куда подставятся слова
-        try (Playwright playwright = Playwright.create()) {
-            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-            Page page = browser.newPage();
+@Epic("Документация Playwright") @Feature("Поиск по сайту") @ParameterizedTest(name = "Поиск по ключевому слову: {0}") @ValueSource(strings = {"Actions", "Locators", "Assertions"})
+            void searchParameterizedTest(String searchQuery){
+                    try(Playwright playwright=Playwright.create()){
+                    Browser browser=playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+                    Page page=browser.newPage();
 
-            page.navigate("https://playwright.dev/");
+                    // 1. Шаг открытия сайта
+                    Allure.step("Открыть главную страницу Playwright",()->{
+                    page.navigate("https://playwright.dev/");
+                    });
 
-            // Открываем поиск
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search")).click();
+                    // 2. Шаг поиска
+                    Allure.step("Ввести запрос '"+searchQuery+"' в поиск",()->{
+                    page.getByRole(AriaRole.BUTTON,new Page.GetByRoleOptions().setName("Search")).click();
+                    Locator input=page.locator("#docsearch-input");
+                    input.waitFor();
+                    input.fill(searchQuery);
 
-            // Печатаем слово из нашего списка (используем searchQuery)
-            Locator input = page.locator("#docsearch-input");
-            input.waitFor();
-            input.fill(searchQuery);
+                    Locator firstResult=page.locator(".DocSearch-Hit a").first();
+                    firstResult.waitFor();
+                    firstResult.click();
+                    });
 
-            // 4. Ждём результат и кликаем
-            Locator firstResult = page.locator(".DocSearch-Hit a").first();
-            firstResult.waitFor();
-            firstResult.click();
+                    // 3. Шаг проверки
+                    Allure.step("Проверить, что заголовок содержит '"+searchQuery+"'",()->{
+                    page.waitForURL("**/docs/**");
+                    String actualHeader=page.locator("h1").textContent().toLowerCase();
 
-            // --- УЛУЧШЕННОЕ ОЖИДАНИЕ ---
-            // Ждём, пока в h1 появится текст, похожий на наш запрос (игнорируя регистр)
-            page.locator("h1").waitFor(new Locator.WaitForOptions().setTimeout(5000));
+                    // Добавляем скриншот прямо ВНУТРЬ шага проверки
+                    byte[]screenshot=page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
+                    Allure.addAttachment("Скриншот страницы "+searchQuery,new ByteArrayInputStream(screenshot));
 
-            // Дополнительная страховка: ждём, чтобы текст h1 НЕ был текстом главной страницы
-            page.waitForCondition(() -> !page.locator("h1").textContent().contains("enables reliable"));
+                    assertTrue(actualHeader.contains(searchQuery.toLowerCase()),
+                    "Ожидали "+searchQuery+", но нашли "+actualHeader);
+                    });
 
-            // 5. Проверяем
-            String actualHeader = page.locator("h1").textContent().toLowerCase();
-            System.out.println("Для запроса [" + searchQuery + "] нашли заголовок: " + actualHeader);
-
-            assertTrue(actualHeader.contains(searchQuery.toLowerCase()),
-                    "Ожидали " + searchQuery + ", но нашли " + actualHeader);
-
-            browser.close();
-        }
-    }
-}
+                    browser.close();
+                    }
+                    }
