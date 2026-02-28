@@ -1,48 +1,51 @@
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.AriaRole;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SearchTest {
-    @Test
-    void searchActionTest() {
+    @ParameterizedTest
+    @ValueSource(strings = {"Actions", "Locators", "Assertions", "Playwright"})
+        // Список слов для поиска
+    void searchParameterizedTest(String searchQuery) { // searchQuery — это переменная, куда подставятся слова
         try (Playwright playwright = Playwright.create()) {
-            // Запускаем браузер (можешь поставить headless(false), если хочешь посмотреть глазами)
             Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
             Page page = browser.newPage();
 
-            // 1. Идем на сайт
             page.navigate("https://playwright.dev/");
 
-            // 2. Открываем поиск
+            // Открываем поиск
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search")).click();
 
-            // 3. Печатаем слово
-            page.locator("#docsearch-input").click();
-            page.locator("#docsearch-input").fill("Actions");
+            // Печатаем слово из нашего списка (используем searchQuery)
+            Locator input = page.locator("#docsearch-input");
+            input.waitFor();
+            input.fill(searchQuery);
 
-            // 4. Ждём, пока появится результат, и кликаем
+            // 4. Ждём результат и кликаем
             Locator firstResult = page.locator(".DocSearch-Hit a").first();
             firstResult.waitFor();
             firstResult.click();
 
-            // --- НОВАЯ СТРОКА: Ждём, когда URL изменится на страницу docs ---
-            page.waitForURL("**/docs/**");
+            // --- УЛУЧШЕННОЕ ОЖИДАНИЕ ---
+            // Ждём, пока в h1 появится текст, похожий на наш запрос (игнорируя регистр)
+            page.locator("h1").waitFor(new Locator.WaitForOptions().setTimeout(5000));
 
-            // 5. Теперь ждём h1. Так как URL уже новый, Playwright найдёт h1 именно на НОВОЙ странице
-            page.locator("h1").waitFor();
+            // Дополнительная страховка: ждём, чтобы текст h1 НЕ был текстом главной страницы
+            page.waitForCondition(() -> !page.locator("h1").textContent().contains("enables reliable"));
 
-            // 6. Проверяем заголовок (теперь там точно будет не главная)
+            // 5. Проверяем
             String actualHeader = page.locator("h1").textContent().toLowerCase();
-            System.out.println("ТЕПЕРЬ ЗАГОЛОВОК ТАКОЙ: " + actualHeader);
+            System.out.println("Для запроса [" + searchQuery + "] нашли заголовок: " + actualHeader);
 
-            assertTrue(actualHeader.contains("actions"), "В заголовке нет слова 'actions'!");
+            assertTrue(actualHeader.contains(searchQuery.toLowerCase()),
+                    "Ожидали " + searchQuery + ", но нашли " + actualHeader);
 
-            // 7. Делаем скриншот
-            page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get("screenshot-search.png")));
             browser.close();
         }
     }
