@@ -9,7 +9,7 @@ public class GetStarted {
     @Test
     void myFirstTest() {
         try (Playwright playwright = Playwright.create()) {
-            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
+            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
             Page page = browser.newPage();
 
             // 1. Идем на сайт
@@ -18,10 +18,13 @@ public class GetStarted {
             // 2. Нажимаем на кнопку Get Started (она находится по тексту или классу)
             page.getByText("Get Started").first().click();
 
+            //3. Ждём, пока главный заголовок страницы (h1) станет видимым
+            page.locator("h1").waitFor();
+
             // 3. Проверяем, что заголовок совпадает с ожидаемым
             assertEquals("Installation | Playwright", page.title());
 
-            System.out.println ("Заголовок страницы: " + page.title());
+            System.out.println ("Успех. Заголовок страницы: " + page.title());
 
             browser.close();
         }
