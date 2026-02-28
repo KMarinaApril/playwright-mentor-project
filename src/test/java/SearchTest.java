@@ -3,6 +3,8 @@ import com.microsoft.playwright.options.AriaRole;
 import io.qameta.allure.Allure;
 import io.qameta.allure.Epic;
 import io.qameta.allure.Feature;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.TestWatcher;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -10,6 +12,22 @@ import java.io.ByteArrayInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 public class SearchTest {
+    // Создаем TestWatcher. чтобы скриншоты делать только для failed tests
+    public class ScreenshotOnFailure implements TestWatcher {
+        private final Page page;
+
+        public ScreenshotOnFailure(Page page) {
+            this.page = page;
+        }
+
+        @Override
+        public void testFailed(ExtensionContext context, Throwable cause) {
+            // Этот код сработает ТОЛЬКО если assertTrue или другой ассерт упал
+            byte[] screenshot = page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
+            Allure.addAttachment("Screenshot on Failure", new ByteArrayInputStream(screenshot));
+        }
+    }
+
     @Epic("Документация Playwright")
     @Feature("Поиск по сайту")
     @ParameterizedTest(name = "Поиск по ключевому слову: {0}")
