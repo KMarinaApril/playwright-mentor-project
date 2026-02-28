@@ -1,38 +1,48 @@
 import com.microsoft.playwright.*;
 import io.qameta.allure.Allure;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.TestInfo;
-
+import org.junit.jupiter.api.*;
 import java.io.ByteArrayInputStream;
+import java.nio.file.Paths;
 
 public class BaseTest {
-    protected Playwright playwright;
-    protected Browser browser;
+    protected static Playwright playwright;
+    protected static Browser browser;
+    protected BrowserContext context;
     protected Page page;
 
-    @BeforeEach
-    void setUp() {
+    @BeforeAll
+    static void launchBrowser() {
         playwright = Playwright.create();
-        // Оставляем false, чтобы видеть процесс
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
-        page = browser.newPage();
+        // Можно добавить headless: false, если хочешь видеть процесс глазами
+        browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+    }
+
+    @BeforeEach
+    void createContext() {
+        Allure.step("Подготовка окружения: запуск браузера", () -> {
+            context = browser.newContext();
+            page = context.newPage();
+        });
     }
 
     @AfterEach
-    void tearDown(TestInfo testInfo) {
-        // Делаем скриншот ПЕРЕД закрытием браузера
-        if (page != null && !page.isClosed()) {
-            try {
-                byte[] screenshot = page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
-                Allure.addAttachment("Скриншот: " + testInfo.getDisplayName(), new ByteArrayInputStream(screenshot));
-            } catch (Exception e) {
-                System.out.println("Не удалось сделать скриншот: " + e.getMessage());
-            }
-        }
+    void closeContext() {
+        // Делаем скриншот перед закрытием, чтобы запечатлеть финал теста
+        byte[] screenshot = page.screenshot(new Page.ScreenshotOptions().setFullPage(true));
+        Allure.addAttachment("Финальное состояние страницы", new ByteArrayInputStream(screenshot));
 
-        // Теперь закрываем всё
-        if (browser != null) browser.close();
-        if (playwright != null) playwright.close();
+        Allure.step("Закрытие сессии", () -> {
+            context.close();
+        });
+    }
+
+    @AfterAll
+    static void closeBrowser() {
+        if (browser != null) {
+            browser.close();
+        }
+        if (playwright != null) {
+            playwright.close();
+        }
     }
 }
